@@ -210,10 +210,11 @@ Data Science Methodologies provide a system to achieve efficient and repeatable 
 ***A statement on your most difficult challenge (if any) carrying out this project and how you overcame/handled it:***
 
 The large data sets posed a challenge throughout this project. As my computer was unable to work with the original data sets due to their size, I needed to use smaller, less extensive data sets, resulting in potentially less accurate results. Additionally, the use of the smaller data sets proved to be taxing on my computer, resulting in lengthy load times of the models, which proved to be a problem when frequently changing and running the models. Moreover, the choice of accuracy measures
-proved to be a challenge as the outcome variable is categorical instead of continuous, such that the mean squared error or other similar measure, for example, RMSE and MAE, cannot be used. To overcome this, I created an accuracy measure that compares the number of stars correctly specified by the models in the test set with the observed stars. 
+proved to be a challenge as the outcome variable is categorical instead of continuous, such that the mean squared error or other similar measures, for example, RMSE and MAE, cannot be used. To overcome this, I created an accuracy measure that compares the number of stars correctly specified by the models in the test set with the observed stars. 
 
 <div align="right">
 (142 words)
+
 (Overall: 1250 words)
 
 
