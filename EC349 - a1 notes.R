@@ -12,11 +12,9 @@ library(tidyverse)
 library(tree)
 library(rpart)
 library(rpart.plot)
-
-library(adabag) #AdaBoost
-library(caret)  #create data partition/training dataset
-library(randomForest) #randomforest
-library(psych)  #Easy package for PCA
+library(ipred) 
+library(caret)  
+library(randomForest) 
 
 #Load Datasets 
 load(file='yelp_review_small.Rda')
@@ -38,101 +36,52 @@ train_x <-train[,-1]
 train_y <-train[,1]
 nrow(test)
 
-##Linear Regression
-lm_stars <- lm(stars ~ average_stars + funny.x + compliment_cool + 
-                  compliment_cute + compliment_more + compliment_note +
-                  compliment_photos + review_count, data = train) 
-summary(lm_stars) 
-
-  #Prediction to test data
-  lm_stars_predict<-predict(lm_stars, newdata = test)
-
-  #Empirical MSE in TEST data
-  lm_stars_test_MSE<-mean((lm_stars_predict-test$stars)^2)
-  summary(lm_stars_test_MSE) 
+##Decision Tree, With rpart library
+  #Classification Tree
+  rpart_treec<-rpart(stars ~ ., data = train, method = 'class')
+  rpart.plot(rpart_treec)
+  summary(rpart_treec)
   
-  #Calculate accuracy
-     # Convert predicted values to rounded stars (assuming stars are integers)
-       rounded_predictions_lm <- round(lm_stars_predict)
-     # Count the number of correctly predicted stars
-       correctly_predicted_lm <- sum(rounded_predictions_lm == test_y)
-     # Divide the correctly specified number of stars by the number of stars in the test set 
-       accuracy_lm <- correctly_predicted_lm/10000
-       sum(accuracy_lm)
-
-##Ridge with Cross-Validation 
-cv.out <- cv.glmnet(as.matrix(train_x), as.matrix(train_y), alpha = 0)
-plot(cv.out)
-lambda_ridge_cv <- cv.out$lambda.min #cross-validation is the lambda minimising empirical MSE in training data
+    #Fit on Test Data
+    rpart_predictionc <- predict(rpart_treec, newdata = test, type="class")
   
-  #Estimate Ridge with lambda chosen by Cross validation
-  ridge.mod<-glmnet(train_x, train_y, alpha = 0, lambda = lambda_ridge_cv, thresh = 1e-12)
+    #Calculate accuracy
+    correctly_predicted_rpartc <- sum(rpart_predictionc == test_y)
+    # Divide the correctly specified number of stars by the number of stars in the test set 
+    accuracy_rpartc <- correctly_predicted_rpartc/10000
+    sum(accuracy_rpartc)
+  
+  #Regression Tree
+  rpart_treer<-rpart(stars ~ ., data = train, method = 'anova')
+  rpart.plot(rpart_treer)
+  summary(rpart_treec)
   
   #Fit on Test Data
-  ridge.pred <- predict(ridge.mod, s = lambda_ridge_cv, newx = as.matrix(test_x))
-  ridge_MSE<- mean((ridge.pred - test_y) ^ 2) #Outperforms OLS
-  summary(ridge_MSE)
+    rpart_predictionr <- predict(rpart_treer, newdata = test)
+    rpart_MSEr<- mean((rpart_predictionr - test_y) ^ 2) #Note how it outperforms OLS
+    summary(rpart_MSEr)
   
-     #Calculate accuracy
-     # Convert predicted values to rounded stars (assuming stars are integers)
-       rounded_predictions_ridge <- round(ridge.pred)
-     # Count the number of correctly predicted stars
-       correctly_predicted_ridge <- sum(rounded_predictions_ridge == test_y)
-     # Divide the correctly specified number of stars by the number of stars in the test set 
-       accuracy_ridge <- correctly_predicted_ridge/10000
-       sum(accuracy_ridge)
-  
-  
-##LASSO with Cross-Validation 
-cv.out <- cv.glmnet(as.matrix(train_x), as.matrix(train_y), alpha = 1, nfolds = 3)
-plot(cv.out)
-lambda_LASSO_cv <- cv.out$lambda.min #cross-validation is the lambda minimising empirical MSE in training data
-  
-  #Estimate LASSO with lambda chosen by Cross validation
-  LASSO.mod<-glmnet(train_x, train_y, alpha = 1, lambda = lambda_LASSO_cv, thresh = 1e-12)
-  coef(LASSO.mod) #note that some parameter estimates are set to 0 --> Model selection!
-  
-  #Fit on Test Data
-  LASSO.pred <- predict(LASSO.mod, s = lambda_LASSO_cv, newx = as.matrix(test_x))
-  LASSO_MSE<- mean((LASSO.pred - test_y) ^ 2) #Note how it outperforms OLS
-  summary(LASSO_MSE)
-  
-  #Calculate accuracy
-  # Convert predicted values to rounded stars (assuming stars are integers)
-  rounded_predictions_lasso <- round(LASSO.pred)
-  # Count the number of correctly predicted stars
-  correctly_predicted_lasso <- sum(rounded_predictions_lasso == test_y)
-  # Divide the correctly specified number of stars by the number of stars in the test set 
-  accuracy_lasso <- correctly_predicted_lasso/10000
-  sum(accuracy_lasso)
-  
-
-##Regression Tree
-  #With rpart library
-  rpart_tree<-rpart(stars ~ ., data = train)
-  rpart.plot(rpart_tree)
-  summary(rpart_tree)
-  
-  #Fit on Test Data
-  rpart_predictions <- predict(rpart_tree, newdata = test)
-  rpart_MSE<- mean((rpart_predictions - test_y) ^ 2) #Note how it outperforms OLS
-  summary(rpart_MSE)
-  
+    #Calculate accuracy
+    # Convert predicted values to rounded stars (assuming stars are integers)
+    rounded_predictions_rpartr <- round(rpart_predictionr)
+    # Count the number of correctly predicted stars
+    correctly_predicted_rpartr <- sum(rounded_predictions_rpartr == test_y)
+    # Divide the correctly specified number of stars by the number of stars in the test set 
+    accuracy_rpartr <- correctly_predicted_rpartr/10000
+    sum(accuracy_rpartr)  
 
 #Bagging
-  library(ipred)       #for fitting bagged decision trees
-  set.seed(1312)       #make this example reproducible
-  
-  #fit the bagged model
-  bag <- bagging(stars ~., data = train, nbagg = 20,   
+set.seed(123)     
+bag <- bagging(stars ~., data = train, nbagg = 20,   
                  coob = TRUE, control = rpart.control(minsplit = 2, cp = 0.1))
   
   #display fitted bagged model
   bag
   
+  #Fit on Test Data
   bag_predictions <- predict(bag, newdata = test)
   bag_MSE<- mean((bag_predictions - test_y) ^ 2) #Note how it outperforms OLS
-  summary(rpart_MSE)
+  summary(bag_MSE)
   
   #Calculate accuracy
   # Convert predicted values to rounded stars (assuming stars are integers)
@@ -144,95 +93,84 @@ lambda_LASSO_cv <- cv.out$lambda.min #cross-validation is the lambda minimising 
   sum(accuracy_bag)
   
 ## Random Forest
-set.seed(1312)
-model_RF<-randomForest(as.numeric(stars)~.,data=train, ntree=50)
+stars_f <- as.factor(train$stars)
+set.seed(12)
+model_RF<-randomForest(stars_f ~.,data=train, ntree=20)
+model_RF
 pred_RF_test = predict(model_RF, test)
-mean(model_RF[["err.rate"]])
+RF_err <- mean(model_RF[["err.rate"]])
+summary(RF_err)
 
-RF_MSE<- mean((pred_RF_test - test_y) ^ 2) #Note how it outperforms OLS
-summary(RF_MSE)
+# Count the number of correctly predicted stars
+correctly_predicted_rf <- sum(pred_RF_test == test_y)
+# Divide the correctly specified number of stars by the number of stars in the test set 
+accuracy_rf <- correctly_predicted_rf/10000
+sum(accuracy_rf)
+
+
+##Linear Regression
+lm_stars <- lm(stars ~ average_stars + funny.x + compliment_cool + 
+                 compliment_cute + compliment_more + compliment_note +
+                 compliment_photos + review_count, data = train) 
+summary(lm_stars) 
+
+#Prediction to test data
+lm_stars_predict<-predict(lm_stars, newdata = test)
+
+#Empirical MSE in TEST data
+lm_stars_test_MSE<-mean((lm_stars_predict-test$stars)^2)
+summary(lm_stars_test_MSE) 
 
 #Calculate accuracy
 # Convert predicted values to rounded stars (assuming stars are integers)
-rounded_predictions_bag <- round(bag_predictions)
+rounded_predictions_lm <- round(lm_stars_predict)
 # Count the number of correctly predicted stars
-correctly_predicted_bag <- sum(rounded_predictions_bag == test_y)
+correctly_predicted_lm <- sum(rounded_predictions_lm == test_y)
 # Divide the correctly specified number of stars by the number of stars in the test set 
-accuracy_bag <- correctly_predicted_bag/10000
-sum(accuracy_bag)
+accuracy_lm <- correctly_predicted_lm/10000
+sum(accuracy_lm)
 
-  
-## PCA ###
-library(psych)
-pc <- prcomp(train[,-c(9, 10, 12, 1,2,3,4,8,16,17)], center = TRUE, scale. = TRUE) #remove 5th entry which is non-numeric
-attributes(pc)
-  
+##Ridge with Cross-Validation 
+cv.out <- cv.glmnet(as.matrix(train_x), as.matrix(train_y), alpha = 0)
+plot(cv.out)
+lambda_ridge_cv <- cv.out$lambda.min #cross-validation is the lambda minimising empirical MSE in training data
 
+#Estimate Ridge with lambda chosen by Cross validation
+ridge.mod<-glmnet(train_x, train_y, alpha = 0, lambda = lambda_ridge_cv, thresh = 1e-12)
 
-##Boosting
-  
-  # train a model using our training data
-  model_adaboost <- boosting(stars ~ average_stars, data=train, boos=TRUE, mfinal=10, control = rpart.control(minsplit = 0))
-  summary(model_adaboost)
-  
-  mfinal=50
-  
-  + compliment_cool + 
-    compliment_cute + compliment_more + compliment_note +
-    compliment_photos + review_count
-  
-  # Load data for Regression (this one is stored on R)
-  #use model to make predictions on test data
-  pred_ada_test <- predict(model_adaboost, test)
-  
-  # Returns the prediction values of test data along with the confusion matrix
-  pred_ada_test
-  
-  
+#Fit on Test Data
+ridge.pred <- predict(ridge.mod, s = lambda_ridge_cv, newx = as.matrix(test_x))
+ridge_MSE<- mean((ridge.pred - test_y) ^ 2) #Outperforms OLS
+summary(ridge_MSE)
 
+#Calculate accuracy
+# Convert predicted values to rounded stars (assuming stars are integers)
+rounded_predictions_ridge <- round(ridge.pred)
+# Count the number of correctly predicted stars
+correctly_predicted_ridge <- sum(rounded_predictions_ridge == test_y)
+# Divide the correctly specified number of stars by the number of stars in the test set 
+accuracy_ridge <- correctly_predicted_ridge/10000
+sum(accuracy_ridge)
 
+##LASSO with Cross-Validation 
+cv.out <- cv.glmnet(as.matrix(train_x), as.matrix(train_y), alpha = 1, nfolds = 3)
+plot(cv.out)
+lambda_LASSO_cv <- cv.out$lambda.min #cross-validation is the lambda minimising empirical MSE in training data
 
-#n_text <- gsub(",", "", train$text) 
-#text <- as.numeric(n_text)
-#length(text)
-  
-  set.seed(123)
-  stars_tree<-tree(stars ~ average_stars + funny.x + compliment_cool + 
-                     compliment_cute + compliment_more + compliment_note +
-                     compliment_photos + review_count,data = train)
-  
-  #Fit on Test Data
-  tree_predictions <- predict(stars_tree, newdata = test)
-  tree_MSE<- mean((tree_predictions - test_y) ^ 2) #Note how it outperforms OLS
-  summary(tree_MSE)
-  
-  set.seed(123)
-  stars_tree<-tree(stars ~.,data = train)
-  
-  #Fit on Test Data
-  tree_predictions <- predict(stars_tree, newdata = test)
-  tree_MSE<- mean((tree_predictions - test_y) ^ 2) #Note how it outperforms OLS
-  summary(tree_MSE)
-  
-  #Calculate accuracy
-  # Convert predicted values to rounded stars (assuming stars are integers)
-  rounded_predictions_tree <- round(tree_predictions)
-  # Count the number of correctly predicted stars
-  correctly_predicted_tree <- sum(rounded_predictions_tree == test_y)
-  # Divide the correctly specified number of stars by the number of stars in the test set 
-  accuracy_tree <- correctly_predicted_tree/10000
-  sum(accuracy_tree)
-  
-  #partition graph
-  partition.tree(stars_tree) 
-  points(train[,c("average_stars" , "funny.x" , , "compliment_cool" , 
-                  "compliment_cute" , "compliment_more" , "compliment_note" , 
-                  "compliment_photos" , "review_count")], cex=.02)
-  
-  plot(stars_tree)
-  text(tree1, pretty = 1)
-  title(main = "Classification Tree")
-  
+#Estimate LASSO with lambda chosen by Cross validation
+LASSO.mod<-glmnet(train_x, train_y, alpha = 1, lambda = lambda_LASSO_cv, thresh = 1e-12)
+coef(LASSO.mod) #note that some parameter estimates are set to 0 --> Model selection!
 
+#Fit on Test Data
+LASSO.pred <- predict(LASSO.mod, s = lambda_LASSO_cv, newx = as.matrix(test_x))
+LASSO_MSE<- mean((LASSO.pred - test_y) ^ 2) #Note how it outperforms OLS
+summary(LASSO_MSE)
 
-  
+#Calculate accuracy
+# Convert predicted values to rounded stars (assuming stars are integers)
+rounded_predictions_lasso <- round(LASSO.pred)
+# Count the number of correctly predicted stars
+correctly_predicted_lasso <- sum(rounded_predictions_lasso == test_y)
+# Divide the correctly specified number of stars by the number of stars in the test set 
+accuracy_lasso <- correctly_predicted_lasso/10000
+sum(accuracy_lasso)
