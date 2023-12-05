@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Link to my GitHub Repository: https://github.com/zsrettiger/EC349---Assignment-1
 
-```{r, include=FALSE}
+```{r Loading the data, include=FALSE}
 #Clear
 cat("\014") 
 rm(list=ls())
@@ -95,11 +95,11 @@ Academic Integrity (warwick.ac.uk)
 ***Question 3.: You will write up an analysis of your chosen method and of your results, in 1250 words.***
 
 
-  In this analysis, I use 20 numeric and integer variables from data sets about user characteristics and reviews merged together, containing 289878 observations, to predict the number of stars given by user i to business j.  
+  In this analysis, I used twenty numeric and integer variables from data sets about user characteristics and reviews merged together, containing 289878 observations, to predict the number of stars given by user i to business j.  
 
   When predicting the amount of stars given by user i, both the outcome of interest - Y, that is, the number of stars given, and the characteristics - X - of users and reviews can be observed, thus, this is a case of supervised learning. Additionally, in the case of this prediction, the outcome variable is categorical, taking on the values of 1,2,3,4 and 5, such that it requires the use of classification methods. Consequentially, the use of decision tree based models, such as categorical decision trees, bagged decision trees and random forest, could lead to the most precise predictions. 
   
-  Firstly, I look at categorical decision trees, which are non-parametric supervised-learning methods, that split the feature space of X characteristics into regions based on informativeness, such that the variable best classifying the data is split first (IBM, 2022). In this case, as shown on the decision tree below, the parent node is a five-star review, while the child notes are one- and five-star reviews. Two-, three- and four-star reviews remain unused in the decision tree, suggesting that they did not contribute to the change in entropy in any of the splits that could lead to a gain in prediction.  According to the tree on the training data, average stars given by users is the most important variable when predicting the stars a user will give, with review count, a cool and a useful rating also being significant variables in the prediction. Receiving a review from a user giving less than three stars on average results in a prediction of one star based on these results.     
+  Firstly, I looked at categorical decision trees, which are non-parametric supervised-learning methods, that split the feature space of X characteristics into regions based on informativeness, such that the variable best classifying the data is split first (IBM, 2022). In this case, as shown on the decision tree below, the parent node is a five-star review, while the child notes are one- and five-star reviews. Two-, three- and four-star reviews remain unused in the decision tree, suggesting that they did not contribute to the change in entropy in any of the splits that could lead to a gain in prediction.  According to the tree on the training data, average stars given by users is the most important variable when predicting the stars a user will give, with review count, a cool and a useful rating also being significant variables in the prediction. Receiving a review from a user giving less than three stars on average results in a prediction of one star based on these results.     
 
 <div align="center">
 ```{r Question 3: Decision Tree, echo=FALSE }
@@ -110,7 +110,7 @@ rpart.plot(rpart_treec)
    
    
   <div align="left">
-  To see how accurate these results are, I create an accuracy measure by comparing the number of stars correctly specified by the model in the test set with the observed stars. I use this measure as I cannot use other measures, such as the mean squared error, because the outcome is categorical. The constructed accuracy measure suggests that the categorical decision tree predicts the stars given by users with a 51.83 percent accuracy in the test set. Comparing these results with the prediction of the regression tree, the regression tree has an accuracy of 35.5 percent in the test set when rounding up to the number of stars to integers, confirming that the categorical tree is a better fit for this data. 
+  To see how accurate these results are, I created an accuracy measure by comparing the number of stars correctly specified by the model in the test set with the observed stars. I used this measure as I cannot use other measures, such as the mean squared error, because the outcome is categorical. The constructed accuracy measure suggests that the categorical decision tree predicts the stars given by users with a 51.83 percent accuracy in the test set. Comparing these results with the prediction of the regression tree, the regression tree has an accuracy of 35.5 percent in the test set when rounding up to the number of stars to integers, confirming that the categorical tree is a better fit for this data. 
   
 ```{r Question 3: Decision Tree accuracy, echo=FALSE}
 rpart_treec<-rpart(stars ~ ., data = train, method = 'class')
@@ -128,7 +128,7 @@ cat('MSE for Regression Tree (rpart):', rpart_MSEr, '\n')
 ```
   
   
-  Decision trees have the advantage of being flexible and easy to interpret. However, the prediction results have a high variance. To account for this, I re-estimate the predictions using the method of bagging regression trees, which decrease the variance by averaging over observations. The bagging model has an out-of-bag estimate of root mean squared error of 1.3092 and a mean squared error of 1.7189 in the training set. The accuracy of the bagging model is 22.16 percent in the test set; thus, it does not outperform the decision tree on this data set. However, it is important to note that the accuracy of the prediction is measured by rounding up the number of stars  to integers, such that this result is not completely accurate. 
+  Decision trees have the advantage of being flexible and easy to interpret. However, the prediction results have a high variance. To account for this, I re-estimated the predictions using the method of bagging regression trees, which decrease the variance by averaging over observations. The bagging model has an out-of-bag estimate of root mean squared error of 1.3092 and a mean squared error of 1.7189 in the training set. The accuracy of the bagging model is 22.16 percent in the test set; thus, it does not outperform the decision tree on this data set. However, it is important to note that the accuracy of the prediction is measured by rounding up the number of stars  to integers, such that this result is not completely accurate. 
   
 ```{r Question 3: Bagging accuracy, echo=FALSE}
 set.seed(123)     
@@ -142,7 +142,7 @@ accuracy_bag <- sum(round(bag_predictions) == test_y) / nrow(test)
 cat('Accuracy for Bagging:', accuracy_bag, '\n')
 ```
   
-  I also estimate the predictions using the Random Forest model. Random Forests combine random trees and bagging, such that they remove correlation in the predictions, which can occur in decision trees because the predictions were generated from the same original data set, while also reducing the variance in the prediction in comparison to decision trees. The Random Forest model has an out-of-bag estimate of  error rate of 46 percent on the training data, and predicts the stars given by users with an accuracy of 99.95 percent, and an error rate of 0.03024 on the test set, outperforming the categorical decision tree and the bagged regression tree. Additionally, looking at the mean decrease in Gini coefficient, which measures the contribution of the variables to the homogeneity of the nodes and leaves of the random forest tree (Martinez-Taboada and Redondo, 2020), average stars given by users is the most important variable in predicting the number of stars business j will receive, followed by the variables review count, useful and cool, aligning with the results provided by the categorical decision tree. 
+  The predictions were also estimated using the Random Forest model. Random Forests combine random trees and bagging, such that they remove correlation in the predictions, which can occur in decision trees because the predictions were generated from the same original data set, while also reducing the variance in the prediction in comparison to decision trees. The Random Forest model has an out-of-bag estimate of  error rate of 46 percent on the training data, and predicts the stars given by users with an accuracy of 99.95 percent, and an error rate of 0.03024 on the test set, outperforming the categorical decision tree and the bagged regression tree. Additionally, looking at the mean decrease in Gini coefficient, which measures the contribution of the variables to the homogeneity of the nodes and leaves of the random forest tree (Martinez-Taboada and Redondo, 2020), average stars given by users is the most important variable in predicting the number of stars business j will receive, followed by the variables review count, useful and cool, aligning with the results provided by the categorical decision tree. 
   
 
 ```{r Question 3: Random Forest accuracy, echo=FALSE}
@@ -158,7 +158,7 @@ cat('Accuracy for Random Forest:', accuracy_rf, '\n')
 importance(model_RF)
 ```
   
-  Additionally, I estimate the predictions using linear regression models and shrinkage methods to compare to their results to the decision tree based models, treating the outcome variable as a continuous variable and rounding it up to integers when calculating the accuracy of the models. For the Linear Regression model, MSE of 1.445429 is observed, for Ridge, the MSE equals to 1.409148 and for LASSO, the MSE is 1.412232 on the test set. Thus, the Ridge model is suggested to perform the best in predicting the outcome variable. In terms of accuracy on the test set, the Linear Regression model is 37 percent accurate in predicting the outcome, while Ridge is 36.34 percent and LASSO is 37.38 percent accurate, suggesting that the LASSO model is best for prediction of stars given by customers. However, the accuracy scores of these models are much lower than that of the categorical decision tree and the random forest, confirming the choice of models.  
+  Additionally, I estimated the predictions using linear regression models and shrinkage methods to compare to their results to the decision tree based models, treating the outcome variable as a continuous variable and rounding it up to integers when calculating the accuracy of the models. For the Linear Regression model, MSE of 1.445429 is observed, for Ridge, the MSE equals to 1.409148 and for LASSO, the MSE is 1.412232 on the test set. Thus, the Ridge model is suggested to perform the best in predicting the outcome variable. In terms of accuracy on the test set, the Linear Regression model is 37 percent accurate in predicting the outcome, while Ridge is 36.34 percent and LASSO is 37.38 percent accurate, suggesting that the LASSO model is best for prediction of stars given by customers. However, the accuracy scores of these models are much lower than that of the categorical decision tree and the random forest, confirming the choice of models.  
   
 ```{r Question 3: Linear, echo=FALSE}
 ##Linear Regression
@@ -201,17 +201,20 @@ cat('Accuracy for LASSO:', accuracy_lasso, '\n')
 <div align="left">
 ***A brief description of your chosen DS methodology, why you chose this and how you applied it:***
 
-Data Science Methodologies provide a system of approaches to achieve efficient and repeatable results. In this project I used the Cross-Industry Standard Process for Data Mining - CRISP-DM, as I have found its six stages to allow for an easier iterative process. In the 'Data Understanding' stage, I collected the data sets, then explored the details of the data, so that I can work with it in the next steps. For the 'Data Preparation' process, I merged my data sets, and reformatted and excluded variables so that I can work with them while modelling. In the 'Modelling' step, I selected, constructed and assessed my chosen models for the predictions on both the test and training data sets. Then I evaluated my results, followed by a final report about the results in the form of this analysis as part of the "Deployment'. 
+Data Science Methodologies provide a system to achieve efficient and repeatable results. In this project I used Cross-Industry Standard Process for Data Mining - CRISP-DM, as I found its six stages to allow for an easier iterative process. In the 'Data Understanding' stage, I collected the data sets, explored the details of the data so that I can work with it in the next steps. For the 'Data Preparation' process, I merged my data sets, then reformatted and excluded variables so that I can work with them while modelling. In the 'Modelling' step, I selected, constructed and assessed my chosen models for the predictions on both the test and training data sets. Then I evaluated my results, followed by a final report about the results in the form of this analysis as part of the "Deployment'. 
 
 <div align="right">
-(141 words)
+(136 words)
 
 <div align="left">
 ***A statement on your most difficult challenge (if any) carrying out this project and how you overcame/handled it:***
 
+The large data sets posed a challenge throughout this project. As my computer was unable to work with the original data sets due to their size, I needed to use smaller, less extensive data sets, resulting in potentially less accurate results. Additionally, the use of the smaller data sets proved to be taxing on my computer, resulting in lengthy load times of the models, which proved to be a problem when frequently changing and running the models. Moreover, the choice of accuracy measures
+proved to be a challenge as the outcome variable is categorical instead of continuous, such that the mean squared error or other similar measure, for example, RMSE and MAE, cannot be used. To overcome this, I created an accuracy measure that compares the number of stars correctly specified by the models in the test set with the observed stars. 
+
 <div align="right">
-( words)
-(Overall: words)
+(142 words)
+(Overall: 1250 words)
 
 
 
@@ -225,4 +228,3 @@ IBM (2022) 'What is a Decision Tree' [online] www.ibm.com. Available at: https:/
 Luo, K., Li, M., Xia, S. and Lin, Z. (n.d.) Prediction of Yelp Star Rating. [online] Available at: https://cseweb.ucsd.edu/classes/wi15/cse255-a/reports/fa15/015.pdf.
 
 Martinez-Taboada, F. and Redondo, J. I. (2020) 'Variable importance plot (mean decrease accuracy and mean decrease Gini)', *PLOS ONE*. Figure. https://doi.org/10.1371/journal.pone.0230799.g002.
-
