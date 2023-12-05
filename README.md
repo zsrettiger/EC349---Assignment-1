@@ -1,4 +1,8 @@
-# EC349---Assignment-1
+<div align="center">
+## Prediction of user reviews on Yelp
+*University ID: u2080302*
+
+```{r, include=FALSE}
 #Clear
 cat("\014") 
 rm(list=ls())
@@ -14,165 +18,63 @@ library(tree)
 library(rpart)
 library(rpart.plot)
 library(ipred) 
-library(caret)  
-library(randomForest) 
+
+library(adabag) #AdaBoost
+library(caret)  #create data partition/training dataset
+library(randomForest) #randomforest
+library(psych)  #Easy package for PCA
 
 #Load Datasets 
 load(file='yelp_review_small.Rda')
 load(file='yelp_user_small.Rda')
 user_review <- merge(review_data_small, user_data_small,by = "user_id")
+```
 
-#Chech the variables in the data set 
-str(user_review)
-
+<div align="left">
+### Questions
+```{r Question 1, echo=FALSE}
 #Create Test and Training Data sets
-set.seed(1)
+set.seed(1) 
 parts <- createDataPartition(user_review$stars, times = 1,  p = 10000/nrow(user_review), list = F)
-#Exclude variables that are characters, for the rest of the variables: stars and average_stars are numeric and the rest are integers
-test <- user_review[parts,-c(1,2,3,8,9,10,12,16,17)]
+test <- user_review[parts,-c(1,2,3,8,9,10,12,16,17)] #Exclude non-numeric variables
 test_x <-test[,-1] 
 test_y <-test[,1]
 train <- user_review[-parts, -c(1,2,3,8,9,10,12,16,17)]
 train_x <-train[,-1]
 train_y <-train[,1]
-nrow(test)
+```
 
+
+
+Question 3.: You will write up an analysis of your chosen method and of your results, in 1250 words.
+
+
+  In this analysis, I use 20 numeric and integer variables from data sets about user characteristics and reviews merged together, containing 289878 observations to predict the number of stars given by user i to business j.  
+
+  When predicting the amount of stars given by user i, both the outcome of interest Y, that is, the number of stars given, and the characteristics X of users can be observed, thus this is a case of supervised learning. Additionally, in the case of this prediction, the outcome variable is categorical, taking on the values of 1,2,3,4 and 5, such that it requires the use of classification methods. Consequentially, the use of categorical decision trees could lead to precise predictions. Decision trees are non-parametric supervised-learning methods, that split the feature space of X characteristics into regions based on informativeness, such that the variable best classifying the data is split first (IBM, 2022). 
+  
+  In this case, as shown on the decision tree below, the parent node is a five-star review, while the child notes are one- and five-star reviews. Two-, three- and four-star reviews remain unused in the decision tree, suggesting that they did not contribute to the change in entropy in any of the splits that could lead to a gain in prediction.  According to the tree on the training data, average stars given by users is the most important variable when predicting the stars a user will give, with review count, a cool and a useful rating also being significant variables in the prediction. Receiving a review from a user giving less than three stars on average results in a prediction of one star.     
+
+<div align="center">
+```{r Question 3: Decision Tree, echo=FALSE }
 ##Decision Tree, With rpart library
   #Classification Tree
   rpart_treec<-rpart(stars ~ ., data = train, method = 'class')
   rpart.plot(rpart_treec)
-  summary(rpart_treec)
+```
+   
+   
+  <div align="left">
+  To see how accurate these results are, I create an accuracy measure by comparing the number of stars correctly specified by the model in the test set with the observed stars. I use this measure because mean squared error cannot be used as the outcome is categorical. The constructed accuracy measure suggests that the categorical decision tree predicts the stars given by users with a 51.83 percent accuracy in the test set. The prediction of the regression tree has an accuracy of 35.5 percent in the test set when rounding up to the number of stars to integers, showcasing that the categorical tree is a better fit for this data. 
   
-    #Fit on Test Data
-    rpart_predictionc <- predict(rpart_treec, newdata = test, type="class")
+  Decision trees have the advantage of being flexible and easy to interpret. However, the prediction results have a high variance. To account for this, I re-estimate the predictions using the method of bagging regression trees, which decrease the variance by averaging over observations. The bagging model has an out-of-bag estimate of root mean squared error of 1.3092 in the training set. The accuracy of the bagging model is 22.16 percent in the test set; thus, it does not outperform the decision tree on this data set. However, it is important to note that the accuracy of the prediction is measured by rounding up the number of stars given to integers, such that this result is not completely accurate. 
   
-    #Calculate accuracy
-    correctly_predicted_rpartc <- sum(rpart_predictionc == test_y)
-    # Divide the correctly specified number of stars by the number of stars in the test set 
-    accuracy_rpartc <- correctly_predicted_rpartc/10000
-    sum(accuracy_rpartc)
+  I also estimate the predictions using the Random Forest model. Random Forests combine random trees and bagging, such that they remove correlation in the predictions, which can occur in decision trees because the predictions were generated from the same original data set, while also reducing the variance in the prediction in comparison to decision trees. The Random Forests model has an out-of-bag estimate of  error rate of 46 percent on the training data, and predicts the stars given by users with an accuracy of 99.96 percent, and an error rate of 0.03024 on the test set, outperforming the categorical decision tree. 
   
-  #Regression Tree
-  rpart_treer<-rpart(stars ~ ., data = train, method = 'anova')
-  rpart.plot(rpart_treer)
-  summary(rpart_treec)
-  
-  #Fit on Test Data
-    rpart_predictionr <- predict(rpart_treer, newdata = test)
-    rpart_MSEr<- mean((rpart_predictionr - test_y) ^ 2) #Note how it outperforms OLS
-    summary(rpart_MSEr)
-  
-    #Calculate accuracy
-    # Convert predicted values to rounded stars (assuming stars are integers)
-    rounded_predictions_rpartr <- round(rpart_predictionr)
-    # Count the number of correctly predicted stars
-    correctly_predicted_rpartr <- sum(rounded_predictions_rpartr == test_y)
-    # Divide the correctly specified number of stars by the number of stars in the test set 
-    accuracy_rpartr <- correctly_predicted_rpartr/10000
-    sum(accuracy_rpartr)  
-
-#Bagging
-set.seed(123)     
-bag <- bagging(stars ~., data = train, nbagg = 20,   
-                 coob = TRUE, control = rpart.control(minsplit = 2, cp = 0.1))
-  
-  #display fitted bagged model
-  bag
-  
-  #Fit on Test Data
-  bag_predictions <- predict(bag, newdata = test)
-  bag_MSE<- mean((bag_predictions - test_y) ^ 2) #Note how it outperforms OLS
-  summary(bag_MSE)
-  
-  #Calculate accuracy
-  # Convert predicted values to rounded stars (assuming stars are integers)
-  rounded_predictions_bag <- round(bag_predictions)
-  # Count the number of correctly predicted stars
-  correctly_predicted_bag <- sum(rounded_predictions_bag == test_y)
-  # Divide the correctly specified number of stars by the number of stars in the test set 
-  accuracy_bag <- correctly_predicted_bag/10000
-  sum(accuracy_bag)
-  
-## Random Forest
-stars_f <- as.factor(train$stars)
-set.seed(12)
-model_RF<-randomForest(stars_f ~.,data=train, ntree=20)
-model_RF
-pred_RF_test = predict(model_RF, test)
-RF_err <- mean(model_RF[["err.rate"]])
-summary(RF_err)
-
-# Count the number of correctly predicted stars
-correctly_predicted_rf <- sum(pred_RF_test == test_y)
-# Divide the correctly specified number of stars by the number of stars in the test set 
-accuracy_rf <- correctly_predicted_rf/10000
-sum(accuracy_rf)
+  Following these results, the most accurate method to predict the number of stars given to business j by user i based on the characteristics of the users and their reviews is the Random Forest model. 
 
 
-##Linear Regression
-lm_stars <- lm(stars ~ average_stars + funny.x + compliment_cool + 
-                 compliment_cute + compliment_more + compliment_note +
-                 compliment_photos + review_count, data = train) 
-summary(lm_stars) 
 
-#Prediction to test data
-lm_stars_predict<-predict(lm_stars, newdata = test)
 
-#Empirical MSE in TEST data
-lm_stars_test_MSE<-mean((lm_stars_predict-test$stars)^2)
-summary(lm_stars_test_MSE) 
-
-#Calculate accuracy
-# Convert predicted values to rounded stars (assuming stars are integers)
-rounded_predictions_lm <- round(lm_stars_predict)
-# Count the number of correctly predicted stars
-correctly_predicted_lm <- sum(rounded_predictions_lm == test_y)
-# Divide the correctly specified number of stars by the number of stars in the test set 
-accuracy_lm <- correctly_predicted_lm/10000
-sum(accuracy_lm)
-
-##Ridge with Cross-Validation 
-cv.out <- cv.glmnet(as.matrix(train_x), as.matrix(train_y), alpha = 0)
-plot(cv.out)
-lambda_ridge_cv <- cv.out$lambda.min #cross-validation is the lambda minimising empirical MSE in training data
-
-#Estimate Ridge with lambda chosen by Cross validation
-ridge.mod<-glmnet(train_x, train_y, alpha = 0, lambda = lambda_ridge_cv, thresh = 1e-12)
-
-#Fit on Test Data
-ridge.pred <- predict(ridge.mod, s = lambda_ridge_cv, newx = as.matrix(test_x))
-ridge_MSE<- mean((ridge.pred - test_y) ^ 2) #Outperforms OLS
-summary(ridge_MSE)
-
-#Calculate accuracy
-# Convert predicted values to rounded stars (assuming stars are integers)
-rounded_predictions_ridge <- round(ridge.pred)
-# Count the number of correctly predicted stars
-correctly_predicted_ridge <- sum(rounded_predictions_ridge == test_y)
-# Divide the correctly specified number of stars by the number of stars in the test set 
-accuracy_ridge <- correctly_predicted_ridge/10000
-sum(accuracy_ridge)
-
-##LASSO with Cross-Validation 
-cv.out <- cv.glmnet(as.matrix(train_x), as.matrix(train_y), alpha = 1, nfolds = 3)
-plot(cv.out)
-lambda_LASSO_cv <- cv.out$lambda.min #cross-validation is the lambda minimising empirical MSE in training data
-
-#Estimate LASSO with lambda chosen by Cross validation
-LASSO.mod<-glmnet(train_x, train_y, alpha = 1, lambda = lambda_LASSO_cv, thresh = 1e-12)
-coef(LASSO.mod) #note that some parameter estimates are set to 0 --> Model selection!
-
-#Fit on Test Data
-LASSO.pred <- predict(LASSO.mod, s = lambda_LASSO_cv, newx = as.matrix(test_x))
-LASSO_MSE<- mean((LASSO.pred - test_y) ^ 2) #Note how it outperforms OLS
-summary(LASSO_MSE)
-
-#Calculate accuracy
-# Convert predicted values to rounded stars (assuming stars are integers)
-rounded_predictions_lasso <- round(LASSO.pred)
-# Count the number of correctly predicted stars
-correctly_predicted_lasso <- sum(rounded_predictions_lasso == test_y)
-# Divide the correctly specified number of stars by the number of stars in the test set 
-accuracy_lasso <- correctly_predicted_lasso/10000
-sum(accuracy_lasso)
-
+##References:
+IBM (2022) 'What is a Decision Tree' [online] www.ibm.com. Available at: https://www.ibm.com/topics/decision-trees.
